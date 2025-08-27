@@ -3,95 +3,75 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import Image from 'next/image';
 
-// --- Reusable ProductCard Component ---
-// I've moved the ProductCard component into this file to resolve the import error.
+// Convex imports for fetching real data
+import { useQuery } from "convex/react";
+import { api } from "@/../convex/_generated/api";
+
+// --- Reusable & Optimized ProductCard Component ---
 const ProductCard = ({ product }) => {
   if (!product) return null;
 
   return (
     <motion.div
-      whileHover={{ scale: 1.03, y: -5 }}
+      whileHover={{ scale: 1.03, translateY: -5 }}
       transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-      className="group relative block overflow-hidden rounded-lg shadow-lg bg-white"
+      className="group relative block overflow-hidden rounded-lg shadow-lg bg-white h-full"
+      style={{ willChange: 'transform' }}
     >
-        <Link href={product.href} >
-      <div className="relative w-full h-64 overflow-hidden">
-        {/* Replaced Next.js Image with standard <img> tag for compatibility */}
-        <Image
-          src={product.image}
-          alt={product.title}
-        //   width={600}
-        //   height={400}
-          fill
-        //   style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-          className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-      </div>
-
-      <div className="p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-2">{product.title}</h3>
-        <p className="text-gray-600 mb-4 line-clamp-2">{product.description}</p>
-        {/* Replaced Next.js Link with standard <a> tag */}
-        
-        <div className="inline-flex items-center font-semibold text-purple-600 group-hover:text-purple-800 transition-colors">
-
-        Read More
-          
-          <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+      {/* The link now uses the product's slug to create the correct URL */}
+      <Link href={`/details/${product.slug}`} className="flex flex-col h-full">
+        <div className="relative w-full h-64 overflow-hidden">
+          {/* Use the first image from the 'images' array */}
+          <Image
+            src={product.images?.[0] || '/placeholder.png'} // Use first image or a fallback
+            alt={product.name}
+            fill
+            style={{ objectFit: 'contain' }}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="transition-transform duration-500 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent"></div>
         </div>
-      </div>
-        </Link>
+
+        <div className="p-6 flex flex-col flex-grow">
+          {/* Use the 'name' field from the database */}
+          <h3 className="text-xl font-bold text-gray-800 mb-2">{product.name}</h3>
+          {/* Use the 'shortDescription' field from the database */}
+          <p className="text-gray-600 mb-4 line-clamp-2 flex-grow">{product.shortDescription}</p>
+          <div className="mt-auto inline-flex items-center font-semibold text-purple-600 group-hover:text-purple-800 transition-colors">
+            Read More
+            <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+          </div>
+        </div>
+      </Link>
     </motion.div>
   );
 };
 
+// Animation variants for staggered effect
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
 
-// --- FeaturedProducts Section ---
-const featuredProductsData = [
-  {
-    id: 1,
-    title: "Advanced Dermal Serum",
-    description: "A revolutionary formula designed to rejuvenate and protect your skin at the cellular level.",
-    image: "https://biovelcare.com/wp-content/uploads/2025/07/xeroacne-bar.png",
-    href: "/details/advanced-dermal-serum",
-  },
-  {
-    id: 2,
-    title: "Hydro-Boost Moisturizer",
-    description: "Intense hydration that lasts all day, leaving your skin feeling soft, supple, and refreshed.",
-    image: "https://biovelcare.com/wp-content/uploads/2025/07/Permix-Soap-2.jpg",
-    href: "/details/hydro-boost-moisturizer",
-  },
-  {
-    id: 3,
-    title: "Purifying Clay Mask",
-    description: "Detoxify your pores and draw out impurities for a clearer, more radiant complexion.",
-    image: "https://biovelcare.com/wp-content/uploads/2025/07/kinzol-Soap.jpg",
-    href: "/details/purifying-clay-mask",
-  },
-  {
-    id: 4,
-    title: "Purifying Clay Mask",
-    description: "Detoxify your pores and draw out impurities for a clearer, more radiant complexion.",
-    image: "https://biovelcare.com/wp-content/uploads/2025/07/kinzol-Soap.jpg",
-    href: "/product/purifying-clay-mask",
-  },
-  {
-    id: 5,
-    title: "Purifying Clay Mask",
-    description: "Detoxify your pores and draw out impurities for a clearer, more radiant complexion.",
-    image: "https://biovelcare.com/wp-content/uploads/2025/07/kinzol-Soap.jpg",
-    href: "/details/purifying-clay-mask",
-  },
-];
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
+// --- Optimized & Database-Connected FeaturedProducts Section ---
 const FeaturedProducts = () => {
+  // Fetch the latest 12 products from Convex
+  const featuredProducts = useQuery(api.products.getFeaturedProducts);
+
   return (
     <section className="py-16 sm:py-24">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -104,17 +84,33 @@ const FeaturedProducts = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {featuredProductsData.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {/* Loading State */}
+        {featuredProducts === undefined && (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-12 w-12 text-gray-400 animate-spin" />
+          </div>
+        )}
+
+        {/* Content Display */}
+        {featuredProducts && (
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+          >
+            {featuredProducts.map((product) => (
+              <motion.div key={product._id} variants={itemVariants}>
+                <ProductCard product={product} />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
 
         <div className="mt-16 text-center">
-          {/* Replaced Next.js Link with standard <a> tag */}
-          <Link href={"/all-products"} >
-          <Button >View All Products</Button>
-            
+          <Link href={"/all-products"}>
+            <Button>View All Products</Button>
           </Link>
         </div>
       </div>

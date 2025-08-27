@@ -1,5 +1,10 @@
+import { Toaster } from "@/components/ui/sonner"
+
+
+
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import ConvexClientProvider from "./ConvexClientProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,14 +29,19 @@ export default function RootLayout({ children }) {
       >
         {/* The background will be placed here, behind the page content */}
         <div className="fixed top-0 left-0 w-full h-full -z-10 bg-gradient-to-br from-purple-100 via-pink-100 to-rose-200">
-          <div className="absolute top-0 left-0 w-full h-full opacity-50">
+          {/* <div className="absolute top-0 left-0 w-full h-full opacity-50">
             <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-rose-300 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
             <div className="absolute top-1/2 right-1/4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
             <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
-          </div>
+          </div> */}
         </div>
         
+
+        <ConvexClientProvider>
         {children}
+        <Toaster/>
+        </ConvexClientProvider>
+
       </body>
     </html>
   );

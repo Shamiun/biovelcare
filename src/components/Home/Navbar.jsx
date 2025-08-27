@@ -17,8 +17,6 @@ const navItems = [
   { name: "University", href: "/all-university" },
   { name: "Subject", href: "/all-subject" },
   { name: "Country", href: "/all-country" },
-  // { name: "Technology", href: "/categories/technology" },
-  // { name: "Gaming", href: "/categories/gaming" },
   { name: "About us", href: "/contact" },
   { name: "Contact Us", href: "/contact" },
 ];
@@ -163,7 +161,7 @@ export default function Navbar() {
               variants={itemVariants}
             >
               <motion.button
-                className="rounded-lg p-2 text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground cursor-pointer"
+                className="rounded-lg p-2 text-muted-foreground transition-colors duration-200 bg-rose-100 hover:bg-rose-200 hover:text-foreground cursor-pointer"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsSearchOpen(true)}

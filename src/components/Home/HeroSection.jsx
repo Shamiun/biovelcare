@@ -5,10 +5,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 
-// NOTE: Added 'href' for the Link component
+import { useQuery } from "convex/react";
+import { api } from "@/../convex/_generated/api";
+import Autoplay from "embla-carousel-autoplay";
+
 const products = [
   {
     id: 1,
@@ -40,19 +43,20 @@ const products = [
   },
 ];
 
+// OPTIMIZATION: Switched from 'x' to 'translateX' for hardware acceleration.
 const variants = {
   enter: (direction) => ({
-    x: direction > 0 ? '100%' : '-100%',
+    translateX: direction > 0 ? '100%' : '-100%',
     opacity: 0,
   }),
   center: {
     zIndex: 1,
-    x: 0,
+    translateX: 0,
     opacity: 1,
   },
   exit: (direction) => ({
     zIndex: 0,
-    x: direction < 0 ? '100%' : '-100%',
+    translateX: direction < 0 ? '100%' : '-100%',
     opacity: 0,
   }),
 };
@@ -61,23 +65,53 @@ const swipeConfidenceThreshold = 10000;
 const swipePower = (offset, velocity) => Math.abs(offset) * velocity;
 
 const HeroSection = () => {
+
+// Fetch real-time billboard data from Convex
+  const billboards = useQuery(api.billboards.getBillboards);
+  
   const [[page, direction], setPage] = useState([0, 0]);
 
   const paginate = (newDirection) => {
-    setPage([(page + newDirection + products.length) % products.length, newDirection]);
+    // Ensure billboards is not empty before paginating
+    if (billboards && billboards.length > 0) {
+      setPage([(page + newDirection + billboards.length) % billboards.length, newDirection]);
+    }
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => paginate(1), 4000);
-    return () => clearTimeout(timer);
-  }, [page]);
+    // Only set the timer if there are billboards to cycle through
+    if (billboards && billboards.length > 0) {
+      const timer = setTimeout(() => paginate(1), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [page, billboards]);
 
-  const productIndex = page % products.length;
-  const product = products[productIndex];
+  // Loading State: Show a spinner while data is being fetched
+  if (billboards === undefined) {
+    return (
+      <div className="relative w-full h-[90vh] lg:h-[80vh] flex items-center justify-center bg-gray-100">
+        <Loader2 className="h-12 w-12 text-gray-400 animate-spin" />
+      </div>
+    );
+  }
+
+  // Empty State: Show a message if no billboards are in the database
+  if (!billboards || billboards.length === 0) {
+    return (
+      <div className="relative w-full h-[90vh] lg:h-[80vh] flex items-center justify-center text-center bg-gray-50 p-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-700">Hero Section Not Configured</h2>
+          <p className="text-gray-500 mt-2">Add a billboard in the admin dashboard to display it here.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const billboardIndex = page % billboards.length;
+  const billboard = billboards[billboardIndex];
 
   return (
-    <div className="relative w-full h-[90vh] lg:h-[80vh] overflow-hidden flex items-center justify-center font-sans mt-5">
-      {/* Background is now handled by layout.js, so this component doesn't need its own background styles */}
+    <div className="relative w-full h-[100vh] md:h-[90vh] lg:h-[80vh] 2xl:h-[60vh] overflow-hidden flex items-center justify-center font-sans mt-5">
       <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-center">
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
@@ -99,57 +133,67 @@ const HeroSection = () => {
               if (swipe < -swipeConfidenceThreshold) paginate(1);
               else if (swipe > swipeConfidenceThreshold) paginate(-1);
             }}
+            // OPTIMIZATION: Added will-change to hint to the browser about upcoming transform changes.
             className="absolute w-full h-full grid grid-cols-1 md:grid-cols-2 items-center gap-2"
+            style={{ willChange: 'transform' }}
           >
-            {/* Image section - now larger on mobile */}
+            {/* Image section */}
             <motion.div 
               className="flex items-center justify-center md:p-8 order-1 md:order-2 relative"
-              key={`image-${product.id}`} // Add key to force re-animation
+              key={`image-${billboard._id}`}
+              // OPTIMIZATION: Using hardware-accelerated 'scale' and 'opacity'.
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.3 }}
+              style={{ willChange: 'transform, opacity' }}
             >
               <Image
-                src={product.image}
-                alt={product.title}
-                width={400} // The actual width of the source image
-                height={400} // The actual height of the source image
-                priority // Helps with Largest Contentful Paint (LCP)
-                className="h-80 w-80 md:w-80 md:h-80 lg:w-96 lg:h-96 object-cover rounded-full bg-rose-100 shadow-2xl"
+                src={billboard.imageUrl}
+                alt={billboard.title}
+                width={500} // Provide the largest potential width of the source image
+                height={500} // Provide the largest potential height
+                // priority={product.id === 1} // Prioritize the first image
+                priority={billboardIndex === 0} // Prioritize the first image
+                // OPTIMIZATION: The 'sizes' prop tells the browser to load smaller images on smaller screens.
+                sizes="(max-width: 768px) 320px, (max-width: 1024px) 320px, 384px"
+                className="h-80 w-80 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain rounded-full bg-rose-100 shadow-2xl"
               />
             </motion.div>
 
             {/* Text content section */}
-            <div className="text-center md:text-left p-4 md:p-8 order-2 md:order-1">
+            <div className="text-center md:text-left 2xl:mx-10 p-4 md:p-8 order-2 md:order-1">
               <motion.h1
-                key={`title-${product.id}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                key={`title-${billboard.id}`}
+                // OPTIMIZATION: Switched from 'y' to 'translateY' for hardware acceleration.
+                initial={{ opacity: 0, translateY: 20 }}
+                animate={{ opacity: 1, translateY: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
+                style={{ willChange: 'transform, opacity' }}
                 className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl font-extrabold text-gray-800 tracking-tight mb-4 lg:mx-8"
               >
-                {product.title}
+                {billboard.title}
               </motion.h1>
               <motion.p
-                key={`desc-${product.id}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                key={`desc-${billboard._id}`}
+                initial={{ opacity: 0, translateY: 20 }}
+                animate={{ opacity: 1, translateY: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
+                style={{ willChange: 'transform, opacity' }}
                 className="text-base sm:text-lg md:text-xl text-gray-600 mb-8 lg:mx-8"
               >
-                {product.description}
+                {billboard.description}
               </motion.p>
               <motion.div
-                key={`button-${product.id}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                key={`button-${billboard._id}`}
+                initial={{ opacity: 0, translateY: 20 }}
+                animate={{ opacity: 1, translateY: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
+                style={{ willChange: 'transform, opacity' }}
               >
-                <Link href={product.href} passHref>
+                <Link href={`/details/${billboard.productSlug}`} passHref>
                   <Button className="bg-gray-800 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:bg-gray-700 transition-colors duration-300 mx-8 cursor-pointer">
                     View Details
                   </Button>
-                  
                 </Link>
               </motion.div>
             </div>
@@ -157,15 +201,15 @@ const HeroSection = () => {
         </AnimatePresence>
       </div>
 
-      {/* Navigation Arrows - Hidden on mobile */}
+      {/* Navigation Arrows */}
       <button
-        className="absolute top-1/2 left-4 md:left-8 2xl:left-2 transform -translate-y-1/2 z-20 bg-white/50 p-2 rounded-full shadow-md hover:bg-white transition-colors hidden lg:flex"
+        className="absolute top-1/2 left-4 md:left-8 2xl:left-2 transform -translate-y-1/2 z-20 bg-white/50 p-2 rounded-full shadow-md hover:bg-white transition-colors hidden lg:flex cursor-pointer"
         onClick={() => paginate(-1)}
       >
         <ChevronLeft className="h-6 w-6 text-gray-800" />
       </button>
       <button
-        className="absolute top-1/2 right-4 md:right-8 2xl:right-2 transform -translate-y-1/2 z-20 bg-white/50 p-2 rounded-full shadow-md hover:bg-white transition-colors hidden lg:flex"
+        className="absolute top-1/2 right-4 md:right-8 2xl:right-2 transform -translate-y-1/2 z-20 bg-white/50 p-2 rounded-full shadow-md hover:bg-white transition-colors hidden lg:flex cursor-pointer"
         onClick={() => paginate(1)}
       >
         <ChevronRight className="h-6 w-6 text-gray-800" />
@@ -173,12 +217,12 @@ const HeroSection = () => {
 
       {/* Pagination Dots */}
       <div className="absolute bottom-8 md:bottom-10 left-1/2 transform -translate-x-1/2 z-20 flex space-x-2">
-        {products.map((_, i) => (
+        {billboards.map((_, i) => (
           <div
             key={i}
-            onClick={() => setPage([i, i > productIndex ? 1 : -1])}
+            onClick={() => setPage([i, i > billboardIndex ? 1 : -1])}
             className={`w-3 h-3 rounded-full cursor-pointer transition-colors ${
-              i === productIndex ? 'bg-gray-800' : 'bg-gray-400'
+              i === billboardIndex ? 'bg-gray-800' : 'bg-gray-400'
             }`}
           />
         ))}

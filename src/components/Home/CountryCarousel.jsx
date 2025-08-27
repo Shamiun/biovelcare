@@ -100,7 +100,7 @@ export default function CountryCarousel() {
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 tracking-tight">
-            Browse by Country
+            What our customer saying
           </h2>
           <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
             Explore top study destinations and find the perfect environment for
